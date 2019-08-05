@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Newtonsoft.Json.Serialization;
+using AspNetCoreRateLimit;
 // using NLog.Extensions.Logging;
 namespace Library.API
 {
@@ -78,6 +79,33 @@ namespace Library.API
             (expirationModelOptions)=>{ expirationModelOptions.MaxAge = 600; },
             (validationModelOptions)=>{ validationModelOptions.MustRevalidate = true; });
             services.AddResponseCaching();
+
+            //Need to Add aspnetcoreratelimit package
+            // For limiting access for 3 time in 5min
+            services.AddMemoryCache();
+            services.Configure<IpRateLimitOptions>((options)=>
+            {
+                options.GeneralRules = new System.Collections.Generic.List<RateLimitRule>()
+                {
+                   new RateLimitRule()
+                   {
+                       Endpoint="*",
+                       Limit=10,
+                       Period="5m"
+                   },
+                   new RateLimitRule()
+                   {
+                       Endpoint="*",
+                       Limit=2,
+                       Period="10s"
+                   }
+
+                };
+            });
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+            services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
+            services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -123,8 +151,9 @@ namespace Library.API
                 cfg.CreateMap<BookForUpdateDto,Book>().ReverseMap();
             });
             libraryContext.EnsureSeedDataForContext();
-            app.UseResponseCaching();
+            app.UseIpRateLimiting();
             app.UseHttpCacheHeaders();
+            app.UseResponseCaching();
             app.UseMvc();
         }
     }
