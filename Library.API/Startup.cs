@@ -72,6 +72,12 @@ namespace Library.API
 
              services.AddTransient<IPropertyMappingService, PropertyMappingService>();
              services.AddTransient<ITypeHelperService, TypeHelperService>();
+            // Need to Add Marvin.cache.headers Package
+            services.AddHttpCacheHeaders(
+                //Extend default cache time 60 sec to 600 sec
+            (expirationModelOptions)=>{ expirationModelOptions.MaxAge = 600; },
+            (validationModelOptions)=>{ validationModelOptions.MustRevalidate = true; });
+            services.AddResponseCaching();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -117,7 +123,8 @@ namespace Library.API
                 cfg.CreateMap<BookForUpdateDto,Book>().ReverseMap();
             });
             libraryContext.EnsureSeedDataForContext();
-
+            app.UseResponseCaching();
+            app.UseHttpCacheHeaders();
             app.UseMvc();
         }
     }
